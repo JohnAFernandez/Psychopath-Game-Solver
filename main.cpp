@@ -4,6 +4,15 @@
 #include <unordered_set>
 #include <queue>
 
+
+struct pair_hash
+{
+    template <class T1, class T2>
+    std::size_t operator() (const std::pair<T1, T2> &pair) const {
+        return std::hash<T1>()(pair.first) ^ std::hash<T2>()(pair.second);
+    }
+};
+
 enum class return_codes {
     NO_PROBLEMS = 0,
     NO_VALID_START,
@@ -19,6 +28,7 @@ enum class block_types {
     PLAYER_START,
     EXIT,
     DIRECTIONAL,
+    INVALID,
     NUM_ENTIRES
 };
 
@@ -29,6 +39,10 @@ enum class direction_list {
     RIGHT,
     NUM_ENTIRES
 };
+
+typedef std::pair<int, int> movable;
+
+typedef 
 
 class grid {
     int width;
@@ -90,6 +104,47 @@ public:
         return; 
     }
 
+    block_types get_type(int x, int y) {
+        if (!valid_width(x) || !valid_height(y)){
+            return block_types::INVALID;
+        }
+
+        return blocks[x][y];
+    }
+
+    block_types get_type(std::pair<int, int> xy) {
+        if (!valid_width(xy.first) || !valid_height(xy.second)){
+            return block_types::INVALID;
+        }
+
+        return blocks[xy.first][xy.second];
+    }
+
+    block_types get_type(std::pair<int, int> xy) {
+        if (!valid_width(xy.first) || !valid_height(xy.second)){
+            return block_types::INVALID;
+        }
+
+        return blocks[xy.first][xy.second];
+    }
+
+    bool is_playable (block_types type){
+        switch (type)
+        {
+        case block_types::EMPTY:
+        case block_types::EXIT:
+        case block_types::PLAYER_START:
+        case block_types::MOVABLE:
+        case block_types::DIRECTIONAL:
+            return true;
+            break;
+
+        default:
+            return false;
+            break;
+        }
+    }
+
     std::pair<int, int> move(int x, int y, direction_list direction) {
 
         std::pair<int, int> out;
@@ -143,7 +198,7 @@ public:
     void populate_play_area() {
 
         if (!valid_width(player_start.first) || !valid_height(player_start.second));{
-            
+
             return;
         }
 
@@ -152,33 +207,33 @@ public:
         current_position.first = player_start.first;
         current_position.second = player_start.second;
 
-        std::unordered_set<std::pair<int, int>> found;
+        std::unordered_set<std::pair<int, int>, pair_hash> found_squares;
+        std::queue<std::pair<int,int>> to_search;
 
         direction_list direction = direction_list::LEFT;
 
         do {
             last_position = current_position;
+            current_position = to_search.front();
+            to_search.pop();
             direction_list last_direction = direction;
 
             do {
                 direction = next_direction(direction);
-                current_position = move(current_position.first, current_position.second, direction);
+                current_position = move(last_position.first, last_position.second, direction);
 
-                if (last_position == current_position) {
-                    continue;
+                if (
+                   !(last_position == current_position) 
+                && found_squares.find(current_position) != found_squares.end()
+                && is_playable(get_type(current_position))
+                ) {
+                    found_squares.insert(current_position);
+                    to_search.push(current_position);
+                    direction = next_direction(direction);
                 }
-
-                if (found.find(current_position) != found.end()){
-                    continue;
-                }
-
-                found.insert(current_position);
-
-                current_position = move(current_position.first, current_position.second, direction);
-                direction = next_direction(direction);
             } while (direction != last_direction);
 
-        } while (static_cast<int>(found.size()) < width * height);
+        } while (static_cast<int>(found_squares.size()) < width * height);
 
     }
 
